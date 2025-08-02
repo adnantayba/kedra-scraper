@@ -1,12 +1,19 @@
-# Define here the models for your scraped items
-#
-# See documentation in:
-# https://docs.scrapy.org/en/latest/topics/items.html
-
+# items.py
 import scrapy
 
 
 class WorkplaceRelationsItem(scrapy.Item):
-    # define the fields for your item here like:
-    # name = scrapy.Field()
-    pass
+    identifier = scrapy.Field()
+    description = scrapy.Field()
+    published_date = scrapy.Field()
+    link_to_doc = scrapy.Field()
+    partition_date = scrapy.Field()
+    body = scrapy.Field()
+    file_path = scrapy.Field()
+    file_hash = scrapy.Field()
+
+    # Add Scrapy's internal fields to prevent errors
+    depth = scrapy.Field()
+    download_timeout = scrapy.Field()
+    download_slot = scrapy.Field()
+    download_latency = scrapy.Field()
