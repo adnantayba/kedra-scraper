@@ -21,10 +21,10 @@ ADDONS = {}
 # Obey robots.txt rules
 ROBOTSTXT_OBEY = True
 # Add storage base path setting
-STORAGE_BASE = "storage"
+# STORAGE_BASE = "storage"
 # Concurrency and throttling settings
-CONCURRENT_REQUESTS = 8
-CONCURRENT_REQUESTS_PER_DOMAIN = 4
+CONCURRENT_REQUESTS = 16
+CONCURRENT_REQUESTS_PER_DOMAIN = 8
 DOWNLOAD_DELAY = 1.5
 
 # Disable cookies (enabled by default)
