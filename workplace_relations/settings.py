@@ -8,12 +8,8 @@
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
 
-# Add to settings.py
-# Add these settings to your existing settings.py
-ITEM_PIPELINES = {
-    "workplace_relations.pipelines.WorkplaceRelationsPipeline": 300,
-}
-
+# settings.py
+STATS_CLASS = "scrapy.statscollectors.MemoryStatsCollector"
 MINIO_ENDPOINT = "localhost:9000"
 MINIO_ACCESS_KEY = "minioadmin"
 MINIO_SECRET_KEY = "minioadmin"
@@ -21,7 +17,7 @@ MINIO_BUCKET = "documents"
 
 MONGO_URI = "mongodb://localhost:27017"
 MONGO_DATABASE = "workplace_relations"
-MONGO_COLLECTION = "decisions"
+MONGO_COLLECTION = "landing_zone"
 
 BOT_NAME = "workplace_relations"
 
@@ -75,8 +71,16 @@ DOWNLOADER_MIDDLEWARES = {
 
 # Configure item pipelines
 # See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
+# settings.py (update)
 ITEM_PIPELINES = {
     "workplace_relations.pipelines.WorkplaceRelationsPipeline": 300,
+}
+
+# Add these
+LOG_LEVEL = "DEBUG"
+EXTENSIONS = {
+    "scrapy.extensions.logstats.LogStats": None,
+    "scrapy.extensions.corestats.CoreStats": None,
 }
 
 # Enable and configure the AutoThrottle extension (disabled by default)

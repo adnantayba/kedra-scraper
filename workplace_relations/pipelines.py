@@ -21,7 +21,7 @@ class WorkplaceRelationsPipeline:
         try:
             self.client = MongoClient("mongodb://localhost:27017/")
             self.db = self.client["workplace_relations"]
-            self.collection = self.db["decisions"]
+            self.collection = self.db["landing_zone"]
             logger.info("Connected to MongoDB")
         except Exception as e:
             logger.error(f"Failed to connect to MongoDB: {e}")
@@ -36,27 +36,33 @@ class WorkplaceRelationsPipeline:
             logger.error(f"Error closing MongoDB connection: {e}")
 
     def process_item(self, item, spider):
-        """Process item - download files and store metadata"""
+        spider.logger.info(f"Processing item: {item['identifier']}")
+
         try:
             item_dict = ItemAdapter(item).asdict()
             link = item_dict.get("link_to_doc")
 
             if link:
-                # Create directory structure based on body and partition date
-                body_dir = self.sanitize_filename(item_dict["body"])
-                partition_dir = item_dict["partition_date"]
-
-                # Download and store the document with organized structure
-                file_info = self.download_and_store_file(link, body_dir, partition_dir)
+                spider.logger.debug(f"Downloading {link}")
+                file_info = self.download_and_store_file(
+                    link,
+                    self.sanitize_filename(item_dict["body"]),
+                    item_dict["partition_date"],
+                )
                 if file_info:
                     item_dict.update(file_info)
 
-            # Store in MongoDB
+            # MongoDB insertion
             result = self.collection.insert_one(item_dict)
-            logger.debug(f"Inserted document with ID: {result.inserted_id}")
+            spider.logger.info(
+                f"Inserted {item['identifier']} (ID: {result.inserted_id})"
+            )
+
             return item
         except Exception as e:
-            logger.error(f"Failed to process item: {e}")
+            spider.logger.error(
+                f"Failed on {item['identifier']}: {str(e)}", exc_info=True
+            )
             raise
 
     def sanitize_filename(self, name):

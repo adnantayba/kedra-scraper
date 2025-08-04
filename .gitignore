@@ -3,6 +3,7 @@
 venv
 logs
 storage
+query.yml
 # Ignore Python compiled files
 __pycache__/
 *.pyc
@@ -12,5 +13,4 @@ __pycache__/
 # Ignore log files
 *.log
 
-# google auth
-token.json
+.tmp_dagster_home_qd4asab6

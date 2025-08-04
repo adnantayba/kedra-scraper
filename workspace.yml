@@ -1,0 +1,10 @@
+# workspace.yaml
+load_from:
+  - python_file:
+      relative_path: workplace_relations/repository.py
+      working_directory: .
+
+# resources:
+#   scrapy_runner:
+#     config:
+#       pass
