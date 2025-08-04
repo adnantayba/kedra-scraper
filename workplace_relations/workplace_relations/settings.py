@@ -7,6 +7,22 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+
+# Add to settings.py
+# Add these settings to your existing settings.py
+ITEM_PIPELINES = {
+    "workplace_relations.pipelines.WorkplaceRelationsPipeline": 300,
+}
+
+MINIO_ENDPOINT = "localhost:9000"
+MINIO_ACCESS_KEY = "minioadmin"
+MINIO_SECRET_KEY = "minioadmin"
+MINIO_BUCKET = "documents"
+
+MONGO_URI = "mongodb://localhost:27017"
+MONGO_DATABASE = "workplace_relations"
+MONGO_COLLECTION = "decisions"
+
 BOT_NAME = "workplace_relations"
 
 SPIDER_MODULES = ["workplace_relations.spiders"]

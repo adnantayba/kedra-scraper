@@ -5,6 +5,9 @@ from urllib.parse import urlencode
 from workplace_relations.utils import daterange_monthly, get_logger
 from workplace_relations.items import WorkplaceRelationsItem
 
+# Add this import at the top
+import os
+from urllib.parse import urlparse
 
 logger = get_logger(__name__)
 
@@ -103,6 +106,7 @@ class WorkplaceSpider(scrapy.Spider):
                     errback=self.handle_error,
                 )
 
+    # Modify the parse_results method to include file handling
     def parse_results(self, response):
         """Parse search results page and yield items directly"""
         if response.status != 200:
@@ -127,7 +131,17 @@ class WorkplaceSpider(scrapy.Spider):
             abs_url = response.urljoin(link)
             self.document_count += 1
 
-            # Create item directly from metadata
+            # Determine file type from URL
+            parsed_url = urlparse(abs_url)
+            path = parsed_url.path.lower()
+            if path.endswith(".pdf"):
+                file_type = "pdf"
+            elif path.endswith(".doc") or path.endswith(".docx"):
+                file_type = "docx" if path.endswith(".docx") else "doc"
+            else:
+                file_type = "html"
+
+            # Create item with file type information
             yield WorkplaceRelationsItem(
                 identifier=identifier.strip() if identifier else None,
                 description=item.xpath("./p[@class='description']/@title").get(),
@@ -135,9 +149,10 @@ class WorkplaceSpider(scrapy.Spider):
                 partition_date=response.meta["partition_date"],
                 body=response.meta["body"],
                 link_to_doc=abs_url,
+                file_type=file_type,
             )
 
-        # Pagination handling
+        # Pagination handling remains the same
         next_page = response.xpath("//a[@class='next']/@href").get()
         if next_page and self.document_count < self.MAX_DOCUMENTS:
             logger.debug("Following pagination")
@@ -148,3 +163,16 @@ class WorkplaceSpider(scrapy.Spider):
     def handle_error(self, failure):
         """Handle request errors"""
         logger.error(f"Request failed: {failure.value}")
+
+    # workplace_spider.py (add this method to the WorkplaceSpider class)
+    def parse_document(self, response):
+        """Parse individual document page and yield item with content"""
+        item = response.meta["item"]
+
+        # For HTML documents, we'll store the entire page
+        if response.url.endswith(".html"):
+            item["file_content"] = response.text
+            yield item
+        else:
+            # For other formats (PDF, DOC), the pipeline will handle them
+            yield item

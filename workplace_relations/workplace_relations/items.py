@@ -1,4 +1,6 @@
+# items.py
 import scrapy
+import hashlib
 
 
 class WorkplaceRelationsItem(scrapy.Item):
@@ -8,6 +10,9 @@ class WorkplaceRelationsItem(scrapy.Item):
     link_to_doc = scrapy.Field()  # This is now the primary field
     partition_date = scrapy.Field()
     body = scrapy.Field()
+    file_path = scrapy.Field()  # Path to stored file
+    file_hash = scrapy.Field()  # Hash of the file content
+    file_type = scrapy.Field()  # File extension (pdf, doc, html, etc.)
 
     # Internal fields (keep for Scrapy compatibility)
     depth = scrapy.Field()
