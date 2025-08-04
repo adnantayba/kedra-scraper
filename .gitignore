@@ -3,7 +3,9 @@
 venv
 logs
 storage
+processed_storage
 query.yml
+test.py
 # Ignore Python compiled files
 __pycache__/
 *.pyc
@@ -13,4 +15,3 @@ __pycache__/
 # Ignore log files
 *.log
 
-.tmp_dagster_home_qd4asab6

@@ -1,13 +1,9 @@
 # dagster_assets.py
 import os
-from datetime import datetime
-from typing import List, Dict, Optional
 
-from dagster import asset, Output, MetadataValue, AssetExecutionContext
+from dagster import asset, Output, OpExecutionContext
 from pymongo import MongoClient
-from bs4 import BeautifulSoup
-import hashlib
-import requests
+
 
 # Configuration
 MONGO_URI = "mongodb://localhost:27017"
@@ -20,13 +16,13 @@ PROCESSED_STORAGE_BASE = "processed_storage"
 
 
 @asset(required_resource_keys={"scrapy_runner"})
-def scrape_and_store_landing_zone(context: AssetExecutionContext):
+def scrape_and_store_landing_zone(context: OpExecutionContext):
     config = context.op_config or {}
     result = context.resources.scrapy_runner.run_spider(
         spider_name="workplace",
-        start_date=config.get("start_date", "2025-01-01"),
-        end_date=config.get("end_date", "2025-12-31"),
-        bodies=config.get("bodies", None),
+        start_date=config.get("start_date"),
+        end_date=config.get("end_date"),
+        bodies=config.get("bodies"),
     )
 
     # Verify results (optional)
@@ -39,135 +35,204 @@ def scrape_and_store_landing_zone(context: AssetExecutionContext):
     )
 
 
-@asset
-def process_documents_from_landing_zone(
-    context: AssetExecutionContext, scrape_and_store_landing_zone: dict
-):
-    """
-    Asset that processes documents from the landing zone to the processed zone.
-    """
-    # Get the count from the dict
-    document_count = scrape_and_store_landing_zone["document_count"]
-    context.log.info(f"Processing {document_count} documents")
+# dagster_assets.py (updated)
+import os
+from datetime import datetime
 
-    client = MongoClient(MONGO_URI)
-    landing_collection = client[LANDING_DB][LANDING_COLLECTION]
+from dagster import asset, Output, OpExecutionContext
+from pymongo import MongoClient
+from bs4 import BeautifulSoup
+import hashlib
 
-    # Debug: Log how many documents are found in MongoDB
-    count = landing_collection.count_documents({})
-    context.log.info(f"Found {count} documents in landing_zone")
+# Configuration (add these to existing config)
+PROCESSED_STORAGE_BASE = "processed_storage"
+PROCESSED_COLLECTION = "processed_documents"
 
-    # Get date range from config or use defaults
-    start_date = context.op_config.get("start_date", "2025-01-01")
-    end_date = context.op_config.get("end_date", "2025-03-01")
 
-    # Convert to datetime objects for MongoDB query
-    start_dt = datetime.strptime(start_date, "%Y-%m-%d")
-    end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+@asset(
+    required_resource_keys={"mongo"},
+    description="Transforms landing zone documents and stores them in processed location",
+)
+def transform_landing_zone_documents(context: OpExecutionContext):
+    config = context.op_config or {}
+    start_date = config.get("start_date")
+    end_date = config.get("end_date")
 
-    # Connect to MongoDB
-    client = MongoClient(MONGO_URI)
-    landing_db = client[LANDING_DB]
-    landing_collection = landing_db[LANDING_COLLECTION]
-
-    # Query documents in the date range
-    query = {
-        "published_date": {
-            "$gte": start_dt.strftime("%d/%m/%Y"),
-            "$lte": end_dt.strftime("%d/%m/%Y"),
-        }
-    }
-
-    documents = list(landing_collection.find(query))
-    processed_count = 0
-    skipped_count = 0
-
-    # Create processed storage directory if it doesn't exist
-    os.makedirs(PROCESSED_STORAGE_BASE, exist_ok=True)
-
-    # Process each document
-    processed_docs = []
-    for doc in documents:
+    def convert_date_format(date_str):
+        """Convert date string to DD/MM/YYYY format used in documents"""
         try:
-            # Get file path from landing zone
-            landing_path = doc["file_path"]
-            file_type = doc["file_type"]
-            identifier = doc["identifier"]
+            # Try parsing as YYYY-MM-DD first (config input format)
+            dt = datetime.strptime(date_str, "%Y-%m-%d")
+            return dt.strftime("%d/%m/%Y")
+        except ValueError:
+            try:
+                # Try parsing as MM-DD-YYYY (current config format)
+                dt = datetime.strptime(date_str, "%m-%d-%Y")
+                return dt.strftime("%d/%m/%Y")
+            except ValueError:
+                # If already in correct format, return as-is
+                if len(date_str) == 10 and date_str[2] == "/" and date_str[5] == "/":
+                    return date_str
+                raise ValueError(f"Unrecognized date format: {date_str}")
 
-            # Read the file content
-            with open(landing_path, "rb") as f:
-                content = f.read()
+    # Initialize MongoDB client
+    mongo_client = context.resources.mongo
 
-            new_content = content
-            new_hash = doc["file_hash"]
+    try:
+        # 1. Fetch metadata from MongoDB landing zone
+        landing_db = mongo_client[LANDING_DB]
+        landing_collection = landing_db[LANDING_COLLECTION]
 
-            # Process HTML files
-            if file_type == "html":
-                soup = BeautifulSoup(content, "html.parser")
-                main_content = soup.find("div", {"class": "col-sm-9"})
+        # Convert query dates
+        query_start = convert_date_format(start_date)
+        query_end = convert_date_format(end_date)
 
-                if main_content:
-                    new_content = str(main_content).encode("utf-8")
-                    new_hash = hashlib.sha256(new_content).hexdigest()
+        context.log.info(f"Looking for documents between {query_start} and {query_end}")
 
-            # Create new file path with identifier as name
-            new_filename = f"{identifier}.{file_type}"
-            body_dir = doc["body"].replace(" ", "_")
-            partition_dir = doc["partition_date"]
+        # Debug: Print collection stats
+        context.log.info(f"Collection stats: {landing_collection.count_documents({})}")
+        context.log.info(f"Looking for documents between {start_date} and {end_date}")
 
-            new_path = os.path.join(
-                PROCESSED_STORAGE_BASE, body_dir, partition_dir, new_filename
-            )
-
-            # Create directories if they don't exist
-            os.makedirs(os.path.dirname(new_path), exist_ok=True)
-
-            # Write the processed file
-            with open(new_path, "wb") as f:
-                f.write(new_content)
-
-            # Create processed document metadata
-            processed_doc = {
-                "identifier": identifier,
-                "description": doc["description"],
-                "published_date": doc["published_date"],
-                "partition_date": doc["partition_date"],
-                "body": doc["body"],
-                "original_link": doc["link_to_doc"],
-                "file_type": file_type,
-                "file_path": new_path,
-                "file_hash": new_hash,
-                "processed_at": datetime.now().isoformat(),
-                "source_document_id": str(doc["_id"]),
+        processed_collection = landing_db[PROCESSED_COLLECTION]
+        # Add this debug code to your asset before the query:
+        sample_doc = landing_collection.find_one({}, {"published_date": 1})
+        context.log.info(
+            f"Sample document date format: {sample_doc.get('published_date')}"
+        )
+        # Convert document dates during query using $expr
+        query = {
+            "$expr": {
+                "$and": [
+                    {
+                        "$gte": [
+                            {
+                                "$dateFromString": {
+                                    "dateString": "$published_date",
+                                    "format": "%d/%m/%Y",
+                                }
+                            },
+                            datetime.strptime(start_date, "%Y-%m-%d"),
+                        ]
+                    },
+                    {
+                        "$lte": [
+                            {
+                                "$dateFromString": {
+                                    "dateString": "$published_date",
+                                    "format": "%d/%m/%Y",
+                                }
+                            },
+                            datetime.strptime(end_date, "%Y-%m-%d"),
+                        ]
+                    },
+                ]
             }
+        }
+        # Debug: Print the query being executed
+        context.log.info(f"Executing query: {query}")
 
-            processed_docs.append(processed_doc)
-            processed_count += 1
+        documents = list(landing_collection.find(query))
+        context.log.info(f"Found {len(documents)} documents to process")
 
-        except Exception as e:
-            context.log.error(
-                f"Failed to process document {doc.get('identifier')}: {e}"
-            )
-            skipped_count += 1
-            continue
+        processed_docs = []
 
-    # Store processed documents in MongoDB
-    if processed_docs:
-        processed_db = client[PROCESSED_DB]
-        processed_collection = processed_db[PROCESSED_COLLECTION]
-        result = processed_collection.insert_many(processed_docs)
+        for doc in documents:
+            try:
+                file_path = doc.get("file_path")
+                if not file_path or not os.path.exists(file_path):
+                    context.log.warning(f"File not found: {file_path}")
+                    continue
 
-        context.log.info(f"Inserted {len(result.inserted_ids)} processed documents")
+                # 2. Process each file based on type
+                file_type = doc.get("file_type", "").lower()
+                new_file_content = None
 
-    # Close MongoDB connection
-    client.close()
+                if file_type == "html":
+                    # 2.i. Process HTML files
+                    with open(file_path, "r", encoding="utf-8") as f:
+                        soup = BeautifulSoup(f.read(), "html.parser")
 
-    # Prepare metadata for the asset
-    metadata = {
-        "documents_processed": processed_count,
-        "documents_skipped": skipped_count,
-        "start_date": start_date,
-        "end_date": end_date,
-    }
+                    # Extract relevant content (adjust xpath as needed)
+                    content_div = soup.find("div", {"class": "col-sm-9"})
+                    if not content_div:
+                        content_div = soup.find("body") or soup
 
-    return Output(value=processed_count, metadata=metadata)
+                    new_file_content = str(content_div).encode("utf-8")
+                else:
+                    # 2.ii. For PDF/DOC files, just read the content
+                    with open(file_path, "rb") as f:
+                        new_file_content = f.read()
+
+                # 3. Calculate new hash
+                new_file_hash = hashlib.sha256(new_file_content).hexdigest()
+
+                # 4. Create new filename from identifier
+                identifier = doc.get("identifier", "document")
+                safe_identifier = "".join(
+                    c if c.isalnum() else "_" for c in identifier
+                )[
+                    :100
+                ]  # Limit length
+                new_filename = f"{safe_identifier}.{file_type}"
+
+                # 5. Create new storage path
+                new_storage_path = os.path.join(
+                    PROCESSED_STORAGE_BASE,
+                    doc.get("body", "unknown"),
+                    doc.get("partition_date", "unknown"),
+                )
+                os.makedirs(new_storage_path, exist_ok=True)
+                new_file_path = os.path.join(new_storage_path, new_filename)
+
+                # 6. Save processed file
+                with open(new_file_path, "wb") as f:
+                    f.write(new_file_content)
+
+                # 7. Create new metadata document
+                processed_doc = {
+                    **doc,
+                    "original_file_path": file_path,
+                    "file_path": new_file_path,
+                    "file_hash": new_file_hash,
+                    "processed_at": datetime.utcnow().isoformat(),
+                    "processing_version": "1.0",
+                }
+
+                # Remove internal fields if present
+                for field in [
+                    "depth",
+                    "download_timeout",
+                    "download_slot",
+                    "download_latency",
+                ]:
+                    processed_doc.pop(field, None)
+
+                processed_docs.append(processed_doc)
+
+            except Exception as e:
+                context.log.error(
+                    f"Failed to process document {doc.get('identifier')}: {str(e)}"
+                )
+                continue
+
+        # 8. Store processed metadata in new collection
+        if processed_docs:
+            result = processed_collection.insert_many(processed_docs)
+            context.log.info(f"Inserted {len(result.inserted_ids)} processed documents")
+
+        return Output(
+            value={
+                "processed_count": len(processed_docs),
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            metadata={
+                "processed_documents": len(processed_docs),
+                "processed_storage_path": os.path.abspath(PROCESSED_STORAGE_BASE),
+                "mongo_collection": PROCESSED_COLLECTION,
+            },
+        )
+
+    except Exception as e:
+        context.log.error(f"Transform process failed: {str(e)}")
+        raise

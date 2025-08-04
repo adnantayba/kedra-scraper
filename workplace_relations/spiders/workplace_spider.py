@@ -163,16 +163,3 @@ class WorkplaceSpider(scrapy.Spider):
     def handle_error(self, failure):
         """Handle request errors"""
         logger.error(f"Request failed: {failure.value}")
-
-    # workplace_spider.py (add this method to the WorkplaceSpider class)
-    def parse_document(self, response):
-        """Parse individual document page and yield item with content"""
-        item = response.meta["item"]
-
-        # For HTML documents, we'll store the entire page
-        if response.url.endswith(".html"):
-            item["file_content"] = response.text
-            yield item
-        else:
-            # For other formats (PDF, DOC), the pipeline will handle them
-            yield item
