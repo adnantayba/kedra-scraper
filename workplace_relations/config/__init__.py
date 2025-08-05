@@ -2,8 +2,8 @@
 Configuration management package for workplace relations scraper.
 """
 
-from .settings import Settings
+from .settings import settings
 from .constants import *
-from .logging_config import LoggingConfig
+from .logging_config import get_logger
 
-__all__ = ['Settings', 'LoggingConfig'] 
+__all__ = ["settings", "get_logger"]

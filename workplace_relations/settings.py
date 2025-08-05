@@ -3,7 +3,7 @@ Scrapy settings loader for workplace_relations project.
 Loads settings from workplace_relations.config.settings.
 """
 
-from workplace_relations.config.settings import settings
+from workplace_relations.config import settings
 
 # Get Scrapy settings from centralized configuration
 scrapy_settings = settings.get_scrapy_settings()

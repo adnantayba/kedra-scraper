@@ -6,20 +6,23 @@ Uses centralized config, logging, and utility modules.
 import scrapy
 from urllib.parse import urlencode, urlparse
 from typing import Optional
-from workplace_relations.core.models.spider_config import SpiderConfig
-from workplace_relations.core.utils.date_utils import DateUtils
-from workplace_relations.core.utils.file_utils import FileUtils
+
 from workplace_relations.items import WorkplaceRelationsItem
-from workplace_relations.config.settings import settings
-from workplace_relations.config.logging_config import get_logger
-from workplace_relations.core.utils.monitoring import ScraperMonitor
+from workplace_relations.config import settings, get_logger
+from workplace_relations.core import (
+    ScraperMonitor,
+    SpiderConfig,
+    DateUtils,
+)
 
 logger = get_logger(__name__)
+
 
 class WorkplaceSpider(scrapy.Spider):
     """
     Spider for crawling workplace relations documents.
     """
+
     name = "workplace"
     allowed_domains = settings.ALLOWED_DOMAINS
     start_url = settings.START_URL
@@ -45,7 +48,7 @@ class WorkplaceSpider(scrapy.Spider):
                 start_date=DateUtils.parse_date(start_date),
                 end_date=DateUtils.parse_date(end_date),
                 bodies=bodies.split(",") if bodies else None,
-                storage_base=storage_base or settings.STORAGE_BASE
+                storage_base=storage_base or settings.STORAGE_BASE,
             )
             logger.info(
                 f"Initialized spider with start_date={start_date}, end_date={end_date}"
@@ -170,7 +173,6 @@ class WorkplaceSpider(scrapy.Spider):
         metrics = self.monitor.finalize()
         logger.info(f"Spider closed. Reason: {reason}")
         logger.info(f"Final metrics: {metrics}")
-
 
     def handle_error(self, failure):
         """Handle request errors."""

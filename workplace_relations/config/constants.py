@@ -12,12 +12,6 @@ MONGO_DATABASE = "workplace_relations"
 MONGO_LANDING_COLLECTION = "landing_zone"
 MONGO_PROCESSED_COLLECTION = "processed_documents"
 
-# MinIO Configuration
-MINIO_ENDPOINT = "localhost:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin"
-MINIO_BUCKET = "documents"
-
 # Scrapy Configuration
 BOT_NAME = "workplace_relations"
 SPIDER_MODULES = ["workplace_relations.spiders"]
@@ -38,10 +32,10 @@ DOWNLOAD_DELAY = 1.5
 
 # File Processing
 SUPPORTED_FILE_TYPES = {
-    'pdf': 'application/pdf',
-    'doc': 'application/msword',
-    'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'html': 'text/html'
+    "pdf": "application/pdf",
+    "doc": "application/msword",
+    "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "html": "text/html",
 }
 
 # Date Formats
@@ -50,4 +44,4 @@ DATE_FORMAT_DISPLAY = "%d/%m/%Y"
 DATE_FORMAT_PARTITION = "%Y-%m"
 
 # Processing Configuration
-PROCESSING_VERSION = "1.0" 
+PROCESSING_VERSION = "1.0"

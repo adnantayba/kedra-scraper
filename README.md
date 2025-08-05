@@ -22,13 +22,12 @@ workplace_relations/
 ├── core/             # Models, services, utils
 ├── pipelines/        # Modular pipelines (landing, processing)
 ├── repositories/     # Data access layer (abstract + Mongo)
-├── resources/        # Dagster resources
 ├── spiders/          # Scrapy spiders (clean, config-driven)
-├── assets/           # (if used) Dagster assets
 ├── dagster_assets.py # Dagster asset definitions (refactored)
 ├── items.py          # Scrapy compatibility only
 ├── middlewares.py    # Scrapy middlewares (centralized logging)
 ├── repository.py     # Dagster Definitions
+├── resources.py      # Dagster Resources
 ├── settings.py       # Loads from centralized config
 ```
 
@@ -60,6 +59,12 @@ ops:
       start_date: "2025-01-01"
       end_date: "2025-03-01"
       bodies: "labour court"  # Optional
+
+ops:
+  transform_landing_zone_documents:
+    config:
+      start_date: "2025-01-01"
+      end_date: "2025-03-01"
 ```
 
 - Click "Launch Run".

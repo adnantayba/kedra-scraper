@@ -4,15 +4,16 @@ Refactored to use centralized logging.
 """
 
 from scrapy import signals
-from itemadapter import ItemAdapter
-from workplace_relations.config.logging_config import get_logger
+from workplace_relations.config import get_logger
 
 logger = get_logger(__name__)
+
 
 class WorkplaceRelationsSpiderMiddleware:
     """
     Spider middleware for workplace relations.
     """
+
     @classmethod
     def from_crawler(cls, crawler):
         s = cls()
@@ -41,6 +42,7 @@ class WorkplaceRelationsDownloaderMiddleware:
     """
     Downloader middleware for workplace relations.
     """
+
     @classmethod
     def from_crawler(cls, crawler):
         s = cls()
