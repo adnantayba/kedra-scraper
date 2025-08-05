@@ -4,7 +4,7 @@ A professional, scalable web scraping pipeline for Workplace Relations Ireland l
 
 ---
 
-## 🚀 Features
+## Features
 - **Modular, maintainable architecture** using Separation of Concerns and design patterns
 - **Scrapy** for robust web crawling
 - **Dagster** for orchestration and asset management
@@ -14,7 +14,7 @@ A professional, scalable web scraping pipeline for Workplace Relations Ireland l
 
 ---
 
-## 🏗️ Project Structure
+## Project Structure
 
 ```
 workplace_relations/
@@ -33,7 +33,7 @@ workplace_relations/
 
 ---
 
-## ⚡ Usage
+## Usage
 
 ### 1. Install dependencies
 ```bash
@@ -75,7 +75,7 @@ ops:
 
 ---
 
-## 🧩 Architecture Overview
+## Architecture Overview
 - **Config:** All settings, constants, and logging are centralized in `config/`.
 - **Core:** Business logic, models, and utilities are in `core/`.
 - **Pipelines:** Data processing is modularized in `pipelines/`.
@@ -85,7 +85,7 @@ ops:
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 1. **Fork the repository** and clone your fork.
 2. **Create a new branch** for your feature or bugfix:
