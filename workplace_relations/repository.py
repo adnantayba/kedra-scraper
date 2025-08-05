@@ -1,4 +1,7 @@
-# repository.py (updated)
+"""
+Dagster Definitions for assets and resources.
+"""
+
 from dagster import Definitions
 from workplace_relations.dagster_assets import (
     scrape_and_store_landing_zone,

@@ -1,87 +1,20 @@
-# Scrapy settings for workplace_relations project
-#
-# For simplicity, this file contains only settings considered important or
-# commonly used. You can find more settings consulting the documentation:
-#
-#     https://docs.scrapy.org/en/latest/topics/settings.html
-#     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-#     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
+"""
+Scrapy settings loader for workplace_relations project.
+Loads settings from workplace_relations.config.settings.
+"""
 
+from workplace_relations.config.settings import settings
 
-# settings.py
+# Get Scrapy settings from centralized configuration
+scrapy_settings = settings.get_scrapy_settings()
+
+# Apply all Scrapy settings
+for key, value in scrapy_settings.items():
+    globals()[key] = value
+
+# Additional Scrapy-specific settings
 STATS_CLASS = "scrapy.statscollectors.MemoryStatsCollector"
-MINIO_ENDPOINT = "localhost:9000"
-MINIO_ACCESS_KEY = "minioadmin"
-MINIO_SECRET_KEY = "minioadmin"
-MINIO_BUCKET = "documents"
-
-MONGO_URI = "mongodb://localhost:27017"
-MONGO_DATABASE = "workplace_relations"
-MONGO_COLLECTION = "landing_zone"
-
-BOT_NAME = "workplace_relations"
-
-SPIDER_MODULES = ["workplace_relations.spiders"]
-NEWSPIDER_MODULE = "workplace_relations.spiders"
-
 ADDONS = {}
-
-
-# Crawl responsibly by identifying yourself (and your website) on the user-agent
-# USER_AGENT = "workplace_relations (+http://www.yourdomain.com)"
-
-# Obey robots.txt rules
-ROBOTSTXT_OBEY = True
-# Add storage base path setting
-# STORAGE_BASE = "storage"
-# Concurrency and throttling settings
-CONCURRENT_REQUESTS = 16
-CONCURRENT_REQUESTS_PER_DOMAIN = 8
-DOWNLOAD_DELAY = 1.5
-
-# Disable cookies (enabled by default)
-# COOKIES_ENABLED = False
-
-# Disable Telnet Console (enabled by default)
-# TELNETCONSOLE_ENABLED = False
-
-# Override the default request headers:
-# DEFAULT_REQUEST_HEADERS = {
-#    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
-#    "Accept-Language": "en",
-# }
-
-# Enable or disable spider middlewares
-# See https://docs.scrapy.org/en/latest/topics/spider-middleware.html
-# SPIDER_MIDDLEWARES = {
-#    "workplace_relations.middlewares.WorkplaceRelationsSpiderMiddleware": 543,
-# }
-
-# Enable or disable downloader middlewares
-# See https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
-DOWNLOADER_MIDDLEWARES = {
-    "workplace_relations.middlewares.WorkplaceRelationsDownloaderMiddleware": 543,
-}
-
-# Enable or disable extensions
-# See https://docs.scrapy.org/en/latest/topics/extensions.html
-# EXTENSIONS = {
-#    "scrapy.extensions.telnet.TelnetConsole": None,
-# }
-
-# Configure item pipelines
-# See https://docs.scrapy.org/en/latest/topics/item-pipeline.html
-# settings.py (update)
-ITEM_PIPELINES = {
-    "workplace_relations.pipelines.WorkplaceRelationsPipeline": 300,
-}
-
-# Add these
-LOG_LEVEL = "DEBUG"
-EXTENSIONS = {
-    "scrapy.extensions.logstats.LogStats": None,
-    "scrapy.extensions.corestats.CoreStats": None,
-}
 
 # Enable and configure the AutoThrottle extension (disabled by default)
 # See https://docs.scrapy.org/en/latest/topics/autothrottle.html
@@ -103,6 +36,3 @@ EXTENSIONS = {
 # HTTPCACHE_DIR = "httpcache"
 # HTTPCACHE_IGNORE_HTTP_CODES = []
 # HTTPCACHE_STORAGE = "scrapy.extensions.httpcache.FilesystemCacheStorage"
-
-# Set settings whose default value is deprecated to a future-proof value
-FEED_EXPORT_ENCODING = "utf-8"

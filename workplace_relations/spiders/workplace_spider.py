@@ -1,68 +1,73 @@
-# spiders/workplace_spider.py
-import scrapy
-import datetime
-from urllib.parse import urlencode
-from workplace_relations.utils import daterange_monthly, get_logger
-from workplace_relations.items import WorkplaceRelationsItem
+"""
+Scrapy spider for workplace relations document crawling.
+Uses centralized config, logging, and utility modules.
+"""
 
-# Add this import at the top
-import os
-from urllib.parse import urlparse
+import scrapy
+from urllib.parse import urlencode, urlparse
+from typing import Optional
+from workplace_relations.core.models.spider_config import SpiderConfig
+from workplace_relations.core.utils.date_utils import DateUtils
+from workplace_relations.core.utils.file_utils import FileUtils
+from workplace_relations.items import WorkplaceRelationsItem
+from workplace_relations.config.settings import settings
+from workplace_relations.config.logging_config import get_logger
+from workplace_relations.core.utils.monitoring import ScraperMonitor
 
 logger = get_logger(__name__)
 
-
 class WorkplaceSpider(scrapy.Spider):
+    """
+    Spider for crawling workplace relations documents.
+    """
     name = "workplace"
-    allowed_domains = ["workplacerelations.ie"]
-    start_url = "https://www.workplacerelations.ie/en/search/"
-    MAX_DOCUMENTS = 1000  # Limit to 1000 documents
+    allowed_domains = settings.ALLOWED_DOMAINS
+    start_url = settings.START_URL
+    MAX_DOCUMENTS = settings.MAX_DOCUMENTS
 
     custom_settings = {
-        "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36",
+        "USER_AGENT": settings.USER_AGENT,
     }
 
     def __init__(
         self,
-        start_date=None,
-        end_date=None,
-        bodies=None,
-        storage_base="storage",
+        start_date: Optional[str] = None,
+        end_date: Optional[str] = None,
+        bodies: Optional[str] = None,
+        storage_base: Optional[str] = None,
         **kwargs,
     ):
         super().__init__(**kwargs)
         self.document_count = 0
-
+        self.monitor = ScraperMonitor()
         try:
-            self.start_date = datetime.datetime.strptime(start_date, "%Y-%m-%d").date()
-            self.end_date = datetime.datetime.strptime(end_date, "%Y-%m-%d").date()
-            self.storage_base = storage_base
+            self.config = SpiderConfig(
+                start_date=DateUtils.parse_date(start_date),
+                end_date=DateUtils.parse_date(end_date),
+                bodies=bodies.split(",") if bodies else None,
+                storage_base=storage_base or settings.STORAGE_BASE
+            )
             logger.info(
                 f"Initialized spider with start_date={start_date}, end_date={end_date}"
             )
-
-            if bodies:
-                self.selected_bodies = set(
-                    b.strip().lower() for b in bodies.split(",") if b.strip()
-                )
+            self.selected_bodies = self.config.get_body_filter()
+            if self.selected_bodies:
                 logger.info(f"Filtering bodies: {', '.join(self.selected_bodies)}")
             else:
-                self.selected_bodies = None
                 logger.info("No body filter applied")
-
         except (ValueError, TypeError) as e:
             logger.error(f"Invalid date format: {e}")
             raise scrapy.exceptions.CloseSpider("Invalid date parameters") from e
 
     def start_requests(self):
-        """Start by fetching the list of available bodies"""
+        """Start by fetching the list of available bodies."""
         logger.info("Starting requests for body list")
         yield scrapy.Request(
             url=self.start_url, callback=self.parse_bodies, errback=self.handle_error
         )
 
-    def parse_bodies(self, response):
-        """Parse the list of decision-making bodies"""
+    def parse_bodies(self, response: scrapy.http.Response):
+        """Parse the list of decision-making bodies."""
         if response.status != 200:
             logger.error(f"Failed to fetch body list: HTTP {response.status}")
             return
@@ -80,8 +85,8 @@ class WorkplaceSpider(scrapy.Spider):
 
             logger.debug(f"Processing body: {body_name} (ID: {body_id})")
 
-            for range_start, range_end in daterange_monthly(
-                self.start_date, self.end_date
+            for range_start, range_end in DateUtils.get_monthly_ranges(
+                self.config.start_date, self.config.end_date
             ):
                 if self.document_count >= self.MAX_DOCUMENTS:
                     logger.info(
@@ -106,9 +111,9 @@ class WorkplaceSpider(scrapy.Spider):
                     errback=self.handle_error,
                 )
 
-    # Modify the parse_results method to include file handling
-    def parse_results(self, response):
-        """Parse search results page and yield items directly"""
+    def parse_results(self, response: scrapy.http.Response):
+        """Parse search results page and yield items directly."""
+        self.monitor.update_metrics()
         if response.status != 200:
             logger.warning(f"Failed search results page: HTTP {response.status}")
             return
@@ -141,7 +146,7 @@ class WorkplaceSpider(scrapy.Spider):
             else:
                 file_type = "html"
 
-            # Create item with file type information
+            # Yield Scrapy Item (for pipeline compatibility)
             yield WorkplaceRelationsItem(
                 identifier=identifier.strip() if identifier else None,
                 description=item.xpath("./p[@class='description']/@title").get(),
@@ -152,7 +157,7 @@ class WorkplaceSpider(scrapy.Spider):
                 file_type=file_type,
             )
 
-        # Pagination handling remains the same
+        # Pagination
         next_page = response.xpath("//a[@class='next']/@href").get()
         if next_page and self.document_count < self.MAX_DOCUMENTS:
             logger.debug("Following pagination")
@@ -160,6 +165,13 @@ class WorkplaceSpider(scrapy.Spider):
                 next_page, callback=self.parse_results, meta=response.meta
             )
 
+    def closed(self, reason):
+        """Called when the spider closes."""
+        metrics = self.monitor.finalize()
+        logger.info(f"Spider closed. Reason: {reason}")
+        logger.info(f"Final metrics: {metrics}")
+
+
     def handle_error(self, failure):
-        """Handle request errors"""
+        """Handle request errors."""
         logger.error(f"Request failed: {failure.value}")

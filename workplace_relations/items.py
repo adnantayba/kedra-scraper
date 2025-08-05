@@ -1,4 +1,8 @@
-# items.py
+"""
+Scrapy Item definition for compatibility.
+For business logic, use workplace_relations.core.models.document.Document.
+"""
+
 import scrapy
 import hashlib
 
