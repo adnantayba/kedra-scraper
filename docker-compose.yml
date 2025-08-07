@@ -24,9 +24,12 @@ services:
       - ./processed_storage:/app/processed_storage
       - ./config:/app/config
     environment:
-      MONGODB_HOST: mongo
-      MONGODB_PORT: 27017
-      MONGODB_DB: workplace_relations
+      MONGO_URI: "mongodb://mongo:27017"
+      MONGO_DATABASE: "workplace_relations"
+      MONGO_LANDING_COLLECTION: "landing_zone"
+      MONGO_PROCESSED_COLLECTION: "processed_documents"
+      STORAGE_BASE: "/app/storage"
+      PROCESSED_STORAGE_BASE: "/app/processed_storage"
     depends_on:
       - mongo
     networks:
