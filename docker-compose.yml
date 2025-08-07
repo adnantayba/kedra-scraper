@@ -1,0 +1,43 @@
+services:
+  mongo:
+    image: mongo:5.0
+    container_name: kedra-scraper-mongo
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    environment:
+      MONGO_INITDB_DATABASE: workplace_relations
+    networks:
+      - scraper_network
+
+  kedra-scraper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: kedra-scraper-app
+    ports:
+      - "3000:3000"  # Dagster UI port
+      - "9000:9000"  # Optional: Scrapy port if needed
+    volumes:
+      - ./storage:/app/storage
+      - ./processed_storage:/app/processed_storage
+      - ./config:/app/config
+    environment:
+      MONGODB_HOST: mongo
+      MONGODB_PORT: 27017
+      MONGODB_DB: workplace_relations
+    depends_on:
+      - mongo
+    networks:
+      - scraper_network
+    command: >
+      sh -c "pip install -r requirements.txt && 
+             dagster dev -h 0.0.0.0 -p 3000 -m workplace_relations.repository"
+
+volumes:
+  mongo_data:
+
+networks:
+  scraper_network:
+    driver: bridge
